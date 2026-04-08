@@ -20,7 +20,38 @@ async function getSheetsClient() {
   return google.sheets({ version: 'v4', auth });
 }
 
-export const getReports = async () => {
+export default async function handler(req: any, res: any) {
+  const { method } = req;
+
+  try {
+    if (method === 'GET') {
+      const activeReports = await getReports();
+      return res.status(200).json(activeReports);
+    } 
+    
+    if (method === 'POST') {
+      await addReport(req.body);
+      return res.status(200).json({ success: true });
+    }
+
+    if (method === 'PUT') {
+      const { rowIndex } = req.query;
+      if (!rowIndex) {
+        return res.status(400).json({ error: 'Missing rowIndex' });
+      }
+      await updateReportStatus(rowIndex as string, req.body);
+      return res.status(200).json({ success: true });
+    }
+
+    res.setHeader('Allow', ['GET', 'POST', 'PUT']);
+    return res.status(405).end(`Method ${method} Not Allowed`);
+  } catch (error: any) {
+    console.error('API Error:', error);
+    return res.status(500).json({ error: error.message });
+  }
+}
+
+async function getReports() {
   const sheets = await getSheetsClient();
   const response = await sheets.spreadsheets.values.get({
     spreadsheetId: SHEET_ID,
@@ -50,9 +81,9 @@ export const getReports = async () => {
     .filter(report => !report._isEmpty);
 
   return data.filter(report => report.status.trim() !== '完成');
-};
+}
 
-export const addReport = async (reportData: any) => {
+async function addReport(reportData: any) {
   const { date, reporter, itemNumber, quantity, reason } = reportData;
   const sheets = await getSheetsClient();
   
@@ -64,9 +95,9 @@ export const addReport = async (reportData: any) => {
       values: [[date, reporter, itemNumber, quantity, reason, '待處理', '', '']],
     },
   });
-};
+}
 
-export const updateReportStatus = async (rowIndex: string, updateData: any) => {
+async function updateReportStatus(rowIndex: string, updateData: any) {
   const { status, updater, updateDate } = updateData;
   const sheets = await getSheetsClient();
 
@@ -78,9 +109,9 @@ export const updateReportStatus = async (rowIndex: string, updateData: any) => {
       values: [[status, updater, updateDate]],
     },
   });
-};
+}
 
-export const ensureHeaders = async () => {
+async function ensureHeaders() {
   try {
     const sheets = await getSheetsClient();
     const response = await sheets.spreadsheets.values.get({
@@ -102,4 +133,4 @@ export const ensureHeaders = async () => {
   } catch (error) {
     console.error('Error ensuring headers:', error);
   }
-};
+}

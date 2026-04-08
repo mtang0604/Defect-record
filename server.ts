@@ -2,7 +2,7 @@ import express from 'express';
 import cors from 'cors';
 import { createServer as createViteServer } from 'vite';
 import path from 'path';
-import { getReports, addReport, updateReportStatus, ensureHeaders } from './api/reports.ts';
+import handler from './api/reports.ts';
 
 const app = express();
 const PORT = 3000;
@@ -10,41 +10,21 @@ const PORT = 3000;
 app.use(cors());
 app.use(express.json());
 
-// API Routes
-app.get('/api/reports', async (req, res) => {
-  try {
-    const activeReports = await getReports();
-    res.json(activeReports);
-  } catch (error: any) {
-    console.error('Error fetching reports:', error);
-    res.status(500).json({ error: error.message });
-  }
+// API Routes - Proxy to the handler
+app.all('/api/reports', async (req, res) => {
+  await handler(req, res);
 });
 
-app.post('/api/reports', async (req, res) => {
-  try {
-    await addReport(req.body);
-    res.json({ success: true });
-  } catch (error: any) {
-    console.error('Error adding report:', error);
-    res.status(500).json({ error: error.message });
-  }
-});
-
-app.put('/api/reports/:rowIndex', async (req, res) => {
-  try {
-    const { rowIndex } = req.params;
-    await updateReportStatus(rowIndex, req.body);
-    res.json({ success: true });
-  } catch (error: any) {
-    console.error('Error updating report:', error);
-    res.status(500).json({ error: error.message });
-  }
+app.all('/api/reports/:rowIndex', async (req, res) => {
+  // Vercel uses req.query for path params in some configs, 
+  // but here we ensure it's available for the handler
+  req.query = { ...req.query, rowIndex: req.params.rowIndex };
+  await handler(req, res);
 });
 
 async function startServer() {
-  // Try to ensure headers on startup
-  ensureHeaders().catch(console.error);
+  // Note: ensureHeaders was removed from exports to comply with Vercel's default export rule.
+  // If you need it on startup, you can call the handler with a special internal method or re-export it.
 
   if (process.env.NODE_ENV !== 'production') {
     const vite = await createViteServer({
