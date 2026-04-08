@@ -18,7 +18,7 @@ export default function App() {
   const [reports, setReports] = useState<Report[]>([]);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
-  const [activeTab, setActiveTab] = useState<'form' | 'list'>('form');
+  const [activeTab, setActiveTab] = useState<'form' | 'list'>('list');
   const [error, setError] = useState<string | null>(null);
 
   // Form state
@@ -42,6 +42,7 @@ export default function App() {
       const res = await fetch('/api/reports');
       if (!res.ok) throw new Error('Failed to fetch reports');
       const data = await res.json();
+      console.log('Frontend received reports:', data);
       setReports(data);
     } catch (err: any) {
       setError(err.message);
@@ -138,6 +139,14 @@ export default function App() {
               >
                 <ListTodo className="w-4 h-4" />
                 待處理清單
+              </button>
+              <button
+                onClick={fetchReports}
+                disabled={loading}
+                className="flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium text-gray-500 hover:text-gray-700 hover:bg-gray-100 transition-colors disabled:opacity-50"
+              >
+                <Loader2 className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
+                重新整理
               </button>
             </div>
           </div>

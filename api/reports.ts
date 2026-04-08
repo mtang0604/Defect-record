@@ -1,49 +1,105 @@
 import { google } from 'googleapis';
 
-export default async function handler(req, res) {
-  // 1. 處理跨網域問題 (CORS)
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+const SHEET_ID = process.env.GOOGLE_SHEET_ID || '1y5w9x7E02xb3Otni11iN9YHmsT_Fk1ynyN52RmmwMOc';
+const RANGE = `A:H`;
 
-  if (req.method === 'OPTIONS') {
-    return res.status(200).end();
+async function getSheetsClient() {
+  const clientEmail = process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL;
+  const privateKey = process.env.GOOGLE_PRIVATE_KEY?.replace(/\\n/g, '\n');
+
+  if (!clientEmail || !privateKey) {
+    throw new Error('Missing Google Service Account credentials in environment variables.');
   }
 
-  // 2. 讀取環境變數 (這就是你在 Vercel 設定的那三把鑰匙)
-  const auth = new google.auth.GoogleAuth({
-    credentials: {
-      client_email: process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL,
-      private_key: process.env.GOOGLE_PRIVATE_KEY?.replace(/\\n/g, '\n'),
-    },
-    scopes: ['https://www.googleapis.com/auth/spreadsheets'],
+  const auth = new google.auth.JWT({
+    email: clientEmail,
+    key: privateKey,
+    scopes: ['https://www.googleapis.com/auth/spreadsheets']
   });
 
-  const sheets = google.sheets({ version: 'v4', auth });
-  const spreadsheetId = process.env.GOOGLE_SHEET_ID;
+  return google.sheets({ version: 'v4', auth });
+}
 
+export const getReports = async () => {
+  const sheets = await getSheetsClient();
+  const response = await sheets.spreadsheets.values.get({
+    spreadsheetId: SHEET_ID,
+    range: RANGE,
+  });
+
+  const rows = response.data.values;
+  if (!rows || rows.length === 0) {
+    return [];
+  }
+
+  const data = rows.slice(1)
+    .map((row, index) => {
+      return {
+        rowIndex: index + 2,
+        date: row[0] || '',
+        reporter: row[1] || '',
+        itemNumber: row[2] || '',
+        quantity: row[3] || '',
+        reason: row[4] || '',
+        status: row[5] || '待處理',
+        updater: row[6] || '',
+        updateDate: row[7] || '',
+        _isEmpty: row.length === 0 || !row.some(cell => cell && cell.trim() !== '')
+      };
+    })
+    .filter(report => !report._isEmpty);
+
+  return data.filter(report => report.status.trim() !== '完成');
+};
+
+export const addReport = async (reportData: any) => {
+  const { date, reporter, itemNumber, quantity, reason } = reportData;
+  const sheets = await getSheetsClient();
+  
+  await sheets.spreadsheets.values.append({
+    spreadsheetId: SHEET_ID,
+    range: RANGE,
+    valueInputOption: 'USER_ENTERED',
+    requestBody: {
+      values: [[date, reporter, itemNumber, quantity, reason, '待處理', '', '']],
+    },
+  });
+};
+
+export const updateReportStatus = async (rowIndex: string, updateData: any) => {
+  const { status, updater, updateDate } = updateData;
+  const sheets = await getSheetsClient();
+
+  await sheets.spreadsheets.values.update({
+    spreadsheetId: SHEET_ID,
+    range: `F${rowIndex}:H${rowIndex}`,
+    valueInputOption: 'USER_ENTERED',
+    requestBody: {
+      values: [[status, updater, updateDate]],
+    },
+  });
+};
+
+export const ensureHeaders = async () => {
   try {
-    if (req.method === 'GET') {
-      const response = await sheets.spreadsheets.values.get({
-        spreadsheetId,
-        range: 'Sheet1!A:H', // 請確保你的分頁名稱是 Sheet1
-      });
-      return res.status(200).json(response.data.values || []);
-    }
+    const sheets = await getSheetsClient();
+    const response = await sheets.spreadsheets.values.get({
+      spreadsheetId: SHEET_ID,
+      range: `A1:H1`,
+    });
 
-    if (req.method === 'POST') {
-      const { date, reporter, itemNumber, quantity, reason } = req.body;
-      await sheets.spreadsheets.values.append({
-        spreadsheetId,
-        range: 'Sheet1!A:E',
-        valueInputOption: 'RAW',
+    const rows = response.data.values;
+    if (!rows || rows.length === 0) {
+      await sheets.spreadsheets.values.update({
+        spreadsheetId: SHEET_ID,
+        range: `A1:H1`,
+        valueInputOption: 'USER_ENTERED',
         requestBody: {
-          values: [[date, reporter, itemNumber, quantity, reason, '待處理']],
+          values: [['發生日期', '回報人員', '品號', '數量', '原因說明', '狀態', '更新人員', '更新日期']],
         },
       });
-      return res.status(200).json({ success: true });
     }
-  } catch (error: any) {
-    return res.status(500).json({ error: error.message });
+  } catch (error) {
+    console.error('Error ensuring headers:', error);
   }
-}
+};
