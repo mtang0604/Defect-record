@@ -1,7 +1,7 @@
 import { google } from 'googleapis';
 
 const SHEET_ID = process.env.GOOGLE_SHEET_ID || '1y5w9x7E02xb3Otni11iN9YHmsT_Fk1ynyN52RmmwMOc';
-const RANGE = `A:H`;
+const RANGE = `A:K`;
 
 async function getSheetsClient() {
   const clientEmail = process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL;
@@ -35,7 +35,8 @@ export default async function handler(req: any, res: any) {
     }
 
     if (method === 'PUT') {
-      const { rowIndex } = req.query;
+      const rowIndex = req.query.rowIndex || req.body.rowIndex;
+      console.log('PUT Request - rowIndex:', rowIndex, 'body:', req.body);
       if (!rowIndex) {
         return res.status(400).json({ error: 'Missing rowIndex' });
       }
@@ -43,7 +44,16 @@ export default async function handler(req: any, res: any) {
       return res.status(200).json({ success: true });
     }
 
-    res.setHeader('Allow', ['GET', 'POST', 'PUT']);
+    if (method === 'DELETE') {
+      const rowIndex = req.query.rowIndex;
+      if (!rowIndex) {
+        return res.status(400).json({ error: 'Missing rowIndex' });
+      }
+      await deleteReport(rowIndex as string);
+      return res.status(200).json({ success: true });
+    }
+
+    res.setHeader('Allow', ['GET', 'POST', 'PUT', 'DELETE']);
     return res.status(405).end(`Method ${method} Not Allowed`);
   } catch (error: any) {
     console.error('API Error:', error);
@@ -75,16 +85,19 @@ async function getReports() {
         status: row[5] || '待處理',
         updater: row[6] || '',
         updateDate: row[7] || '',
+        vendor: row[8] || '',
+        completionDate: row[9] || '',
+        photo: row[10] || '',
         _isEmpty: row.length === 0 || !row.some(cell => cell && cell.trim() !== '')
       };
     })
     .filter(report => !report._isEmpty);
 
-  return data.filter(report => report.status.trim() !== '完成');
+  return data.filter(report => report.status.trim() !== '完成' && report.status.trim() !== '已刪除');
 }
 
 async function addReport(reportData: any) {
-  const { date, reporter, itemNumber, quantity, reason } = reportData;
+  const { date, reporter, itemNumber, quantity, reason, photo } = reportData;
   const sheets = await getSheetsClient();
   
   await sheets.spreadsheets.values.append({
@@ -92,21 +105,45 @@ async function addReport(reportData: any) {
     range: RANGE,
     valueInputOption: 'USER_ENTERED',
     requestBody: {
-      values: [[date, reporter, itemNumber, quantity, reason, '待處理', '', '']],
+      values: [[date, reporter, itemNumber, quantity, reason, '待處理', '', '', '', '', photo || '']],
     },
   });
 }
 
-async function updateReportStatus(rowIndex: string, updateData: any) {
-  const { status, updater, updateDate } = updateData;
+export async function deleteReport(rowIndex: string) {
   const sheets = await getSheetsClient();
+  // We'll just clear the row. Our filter in getReports will ignore it.
+  await sheets.spreadsheets.values.clear({
+    spreadsheetId: SHEET_ID,
+    range: `A${rowIndex}:K${rowIndex}`,
+  });
+}
+
+async function updateReportStatus(rowIndex: string, updateData: any) {
+  const { status, updater, updateDate, vendor, completionDate } = updateData;
+  const sheets = await getSheetsClient();
+
+  // Get current row to preserve existing data in I:J if not provided
+  const currentData = await sheets.spreadsheets.values.get({
+    spreadsheetId: SHEET_ID,
+    range: `I${rowIndex}:J${rowIndex}`,
+  });
+  
+  const currentVendor = currentData.data.values?.[0]?.[0] || '';
+  const currentCompletionDate = currentData.data.values?.[0]?.[1] || '';
 
   await sheets.spreadsheets.values.update({
     spreadsheetId: SHEET_ID,
-    range: `F${rowIndex}:H${rowIndex}`,
+    range: `F${rowIndex}:J${rowIndex}`,
     valueInputOption: 'USER_ENTERED',
     requestBody: {
-      values: [[status, updater, updateDate]],
+      values: [[
+        status, 
+        updater, 
+        updateDate, 
+        vendor !== undefined ? vendor : currentVendor, 
+        completionDate !== undefined ? completionDate : currentCompletionDate
+      ]],
     },
   });
 }
@@ -116,17 +153,17 @@ async function ensureHeaders() {
     const sheets = await getSheetsClient();
     const response = await sheets.spreadsheets.values.get({
       spreadsheetId: SHEET_ID,
-      range: `A1:H1`,
+      range: `A1:K1`,
     });
 
     const rows = response.data.values;
     if (!rows || rows.length === 0) {
       await sheets.spreadsheets.values.update({
         spreadsheetId: SHEET_ID,
-        range: `A1:H1`,
+        range: `A1:K1`,
         valueInputOption: 'USER_ENTERED',
         requestBody: {
-          values: [['發生日期', '回報人員', '品號', '數量', '原因說明', '狀態', '更新人員', '更新日期']],
+          values: [['發生日期', '回報人員', '品號', '數量', '原因說明', '狀態', '更新人員', '更新日期', '廠商', '完成日期', '照片']],
         },
       });
     }

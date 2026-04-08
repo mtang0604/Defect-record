@@ -12,12 +12,12 @@ app.use(express.json());
 
 // API Routes - Proxy to the handler
 app.all('/api/reports', async (req, res) => {
+  // Ensure query parameters are passed through
   await handler(req, res);
 });
 
+// Keep this for backward compatibility or if needed, but the handler now expects query params
 app.all('/api/reports/:rowIndex', async (req, res) => {
-  // Vercel uses req.query for path params in some configs, 
-  // but here we ensure it's available for the handler
   req.query = { ...req.query, rowIndex: req.params.rowIndex };
   await handler(req, res);
 });
