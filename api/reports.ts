@@ -102,8 +102,9 @@ async function addReport(reportData: any) {
   
   await sheets.spreadsheets.values.append({
     spreadsheetId: SHEET_ID,
-    range: RANGE,
+    range: 'A1', // Force it to start looking from A1 to prevent shifting to JKLMN
     valueInputOption: 'USER_ENTERED',
+    insertDataOption: 'INSERT_ROWS', // Force inserting a new row
     requestBody: {
       values: [[date, reporter, itemNumber, quantity, reason, '待處理', '', '', '', '', photo || '']],
     },
@@ -123,14 +124,18 @@ async function updateReportStatus(rowIndex: string, updateData: any) {
   const { status, updater, updateDate, vendor, completionDate } = updateData;
   const sheets = await getSheetsClient();
 
-  // Get current row to preserve existing data in I:J if not provided
+  // Fetch current row data to preserve fields that aren't being updated
   const currentData = await sheets.spreadsheets.values.get({
     spreadsheetId: SHEET_ID,
-    range: `I${rowIndex}:J${rowIndex}`,
+    range: `F${rowIndex}:J${rowIndex}`,
   });
   
-  const currentVendor = currentData.data.values?.[0]?.[0] || '';
-  const currentCompletionDate = currentData.data.values?.[0]?.[1] || '';
+  const row = currentData.data.values?.[0] || [];
+  const currentStatus = row[0] || '';
+  const currentUpdater = row[1] || '';
+  const currentUpdateDate = row[2] || '';
+  const currentVendor = row[3] || '';
+  const currentCompletionDate = row[4] || '';
 
   await sheets.spreadsheets.values.update({
     spreadsheetId: SHEET_ID,
@@ -138,10 +143,10 @@ async function updateReportStatus(rowIndex: string, updateData: any) {
     valueInputOption: 'USER_ENTERED',
     requestBody: {
       values: [[
-        status, 
-        updater, 
-        updateDate, 
-        vendor !== undefined ? vendor : currentVendor, 
+        status !== undefined ? status : currentStatus,
+        updater !== undefined ? updater : currentUpdater,
+        updateDate !== undefined ? updateDate : currentUpdateDate,
+        vendor !== undefined ? vendor : currentVendor,
         completionDate !== undefined ? completionDate : currentCompletionDate
       ]],
     },

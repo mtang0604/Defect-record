@@ -163,25 +163,26 @@ export default function App() {
   };
 
   const executeUpdate = async (rowIndex: number, newStatus: string, vendor?: string) => {
-    let completionDate = undefined;
+    const now = format(new Date(), 'yyyy-MM-dd HH:mm:ss');
+    const payload: any = {
+      status: newStatus,
+      updater: updaterName,
+    };
 
-    if (newStatus === '完成') {
-      completionDate = format(new Date(), 'yyyy-MM-dd HH:mm:ss');
+    if (newStatus === '已通知廠商') {
+      payload.updateDate = now; // H column (更新日期)
+      payload.vendor = vendor;  // I column (廠商)
+    } else if (newStatus === '完成') {
+      payload.completionDate = now; // J column (完成日期)
+      // We explicitly do NOT set payload.updateDate here so it preserves the original "通知廠商" date in H column
     }
 
     try {
       setLoading(true);
-      const updateDate = format(new Date(), 'yyyy-MM-dd HH:mm:ss');
       const res = await fetch(`/api/reports?rowIndex=${rowIndex}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          status: newStatus, 
-          updater: updaterName, 
-          updateDate,
-          vendor,
-          completionDate
-        }),
+        body: JSON.stringify(payload),
       });
 
       if (!res.ok) throw new Error('Failed to update status');
