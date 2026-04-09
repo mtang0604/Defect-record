@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { format } from 'date-fns';
-import { Loader2, Plus, ListTodo, CheckCircle2, Clock, AlertCircle, X, Trash2, Camera, Image as ImageIcon } from 'lucide-react';
+import { Loader2, Plus, ListTodo, CheckCircle2, Clock, AlertCircle, X, Trash2 } from 'lucide-react';
 
 interface Report {
   rowIndex: number;
@@ -14,7 +14,6 @@ interface Report {
   updateDate: string;
   vendor?: string;
   completionDate?: string;
-  photo?: string;
 }
 
 interface ModalState {
@@ -47,7 +46,6 @@ export default function App() {
   const [itemNumber, setItemNumber] = useState('');
   const [quantity, setQuantity] = useState('');
   const [reason, setReason] = useState('');
-  const [photo, setPhoto] = useState<string | null>(null);
 
   // Update state
   const [updaterName, setUpdaterName] = useState('');
@@ -84,7 +82,7 @@ export default function App() {
       const res = await fetch('/api/reports', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ date, reporter, itemNumber, quantity, reason, photo }),
+        body: JSON.stringify({ date, reporter, itemNumber, quantity, reason }),
       });
 
       if (!res.ok) throw new Error('Failed to submit report');
@@ -94,7 +92,6 @@ export default function App() {
       setItemNumber('');
       setQuantity('');
       setReason('');
-      setPhoto(null);
       
       alert('回報成功！');
       fetchReports();
@@ -213,17 +210,6 @@ export default function App() {
     }
   };
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setPhoto(reader.result as string);
-      };
-      reader.readAsDataURL(file);
-    }
-  };
-
   return (
     <div className="min-h-screen bg-gray-50 text-gray-900 font-sans relative">
       {/* Custom Modal */}
@@ -300,15 +286,15 @@ export default function App() {
 
       <header className="bg-white shadow-sm border-b border-gray-200">
         <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center h-16">
-            <h1 className="text-xl font-bold text-gray-900 flex items-center gap-2">
+          <div className="flex flex-col sm:flex-row justify-between items-center py-3 sm:py-0 sm:h-16 gap-3 sm:gap-0">
+            <h1 className="text-xl font-bold text-gray-900 flex items-center justify-center sm:justify-start gap-2 w-full sm:w-auto">
               <AlertCircle className="w-6 h-6 text-blue-600" />
               異常回報系統
             </h1>
-            <div className="flex space-x-4">
+            <div className="flex flex-wrap justify-center gap-2 sm:gap-4 space-x-0">
               <button
                 onClick={() => setActiveTab('form')}
-                className={`flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium transition-colors ${
+                className={`flex items-center gap-2 px-2 py-1.5 sm:px-3 sm:py-2 rounded-md text-sm font-medium transition-colors ${
                   activeTab === 'form'
                     ? 'bg-blue-100 text-blue-700'
                     : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100'
@@ -319,7 +305,7 @@ export default function App() {
               </button>
               <button
                 onClick={() => setActiveTab('list')}
-                className={`flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium transition-colors ${
+                className={`flex items-center gap-2 px-2 py-1.5 sm:px-3 sm:py-2 rounded-md text-sm font-medium transition-colors ${
                   activeTab === 'list'
                     ? 'bg-blue-100 text-blue-700'
                     : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100'
@@ -331,7 +317,7 @@ export default function App() {
               <button
                 onClick={fetchReports}
                 disabled={loading}
-                className="flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium text-gray-500 hover:text-gray-700 hover:bg-gray-100 transition-colors disabled:opacity-50"
+                className="flex items-center gap-2 px-2 py-1.5 sm:px-3 sm:py-2 rounded-md text-sm font-medium text-gray-500 hover:text-gray-700 hover:bg-gray-100 transition-colors disabled:opacity-50"
               >
                 <Loader2 className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
                 重新整理
@@ -448,41 +434,6 @@ export default function App() {
                       />
                     </div>
                   </div>
-
-                  <div className="sm:col-span-2">
-                    <label className="block text-sm font-medium text-gray-700">
-                      照片上傳 (可選)
-                    </label>
-                    <div className="mt-2 flex items-center gap-4">
-                      <label className="cursor-pointer flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 transition-colors">
-                        <Camera className="w-4 h-4 text-blue-600" />
-                        選擇照片 / 拍照
-                        <input 
-                          type="file" 
-                          accept="image/*" 
-                          capture="environment"
-                          onChange={handleFileChange}
-                          className="hidden" 
-                        />
-                      </label>
-                      {photo && (
-                        <div className="relative group">
-                          <img 
-                            src={photo} 
-                            alt="Preview" 
-                            className="w-16 h-16 object-cover rounded-md border border-gray-200" 
-                          />
-                          <button
-                            type="button"
-                            onClick={() => setPhoto(null)}
-                            className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-0.5 opacity-0 group-hover:opacity-100 transition-opacity"
-                          >
-                            <X className="w-3 h-3" />
-                          </button>
-                        </div>
-                      )}
-                    </div>
-                  </div>
                 </div>
 
                 <div className="flex justify-end">
@@ -506,7 +457,7 @@ export default function App() {
           </div>
         ) : (
           <div className="space-y-6">
-            <div className="bg-white shadow rounded-lg p-4 flex items-center gap-4">
+            <div className="bg-white shadow rounded-lg p-4 flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4">
               <label htmlFor="globalUpdater" className="text-sm font-medium text-gray-700 whitespace-nowrap">
                 目前更新人員:
               </label>
@@ -515,12 +466,12 @@ export default function App() {
                 id="globalUpdater"
                 value={updaterName}
                 onChange={(e) => setUpdaterName(e.target.value)}
-                className="shadow-sm focus:ring-blue-500 focus:border-blue-500 block w-64 sm:text-sm border-gray-300 rounded-md p-2 border"
+                className="shadow-sm focus:ring-blue-500 focus:border-blue-500 block w-full sm:w-64 sm:text-sm border-gray-300 rounded-md p-2 border"
                 placeholder="請輸入您的姓名以進行狀態更新"
               />
               {!updaterName && (
                 <span className="text-sm text-amber-600 flex items-center gap-1">
-                  <AlertCircle className="w-4 h-4" />
+                  <AlertCircle className="w-4 h-4 shrink-0" />
                   必須填寫才能更新狀態
                 </span>
               )}
@@ -555,24 +506,6 @@ export default function App() {
 
                         {/* 主要資訊區：日期、品號、數量 */}
                         <div className="flex flex-wrap items-center gap-8 flex-1">
-                          {/* 照片預覽 */}
-                          {report.photo && (
-                            <div className="shrink-0">
-                              <a 
-                                href={report.photo} 
-                                target="_blank" 
-                                rel="noopener noreferrer"
-                                className="block w-16 h-16 rounded-lg overflow-hidden border border-gray-200 hover:border-blue-400 transition-colors"
-                              >
-                                <img 
-                                  src={report.photo} 
-                                  alt="Report" 
-                                  className="w-full h-full object-cover"
-                                />
-                              </a>
-                            </div>
-                          )}
-                          
                           {/* 日期 */}
                           <div className="flex flex-col min-w-[100px]">
                             <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">發生日期</span>

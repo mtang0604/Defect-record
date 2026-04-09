@@ -1,7 +1,7 @@
 import { google } from 'googleapis';
 
 const SHEET_ID = process.env.GOOGLE_SHEET_ID || '1y5w9x7E02xb3Otni11iN9YHmsT_Fk1ynyN52RmmwMOc';
-const RANGE = `A:K`;
+const RANGE = `A:J`;
 
 async function getSheetsClient() {
   const clientEmail = process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL;
@@ -87,7 +87,6 @@ async function getReports() {
         updateDate: row[7] || '',
         vendor: row[8] || '',
         completionDate: row[9] || '',
-        photo: row[10] || '',
         _isEmpty: row.length === 0 || !row.some(cell => cell && cell.trim() !== '')
       };
     })
@@ -97,7 +96,7 @@ async function getReports() {
 }
 
 async function addReport(reportData: any) {
-  const { date, reporter, itemNumber, quantity, reason, photo } = reportData;
+  const { date, reporter, itemNumber, quantity, reason } = reportData;
   const sheets = await getSheetsClient();
   
   await sheets.spreadsheets.values.append({
@@ -106,7 +105,7 @@ async function addReport(reportData: any) {
     valueInputOption: 'USER_ENTERED',
     insertDataOption: 'INSERT_ROWS', // Force inserting a new row
     requestBody: {
-      values: [[date, reporter, itemNumber, quantity, reason, '待處理', '', '', '', '', photo || '']],
+      values: [[date, reporter, itemNumber, quantity, reason, '待處理', '', '', '', '']],
     },
   });
 }
@@ -158,17 +157,17 @@ async function ensureHeaders() {
     const sheets = await getSheetsClient();
     const response = await sheets.spreadsheets.values.get({
       spreadsheetId: SHEET_ID,
-      range: `A1:K1`,
+      range: `A1:J1`,
     });
 
     const rows = response.data.values;
     if (!rows || rows.length === 0) {
       await sheets.spreadsheets.values.update({
         spreadsheetId: SHEET_ID,
-        range: `A1:K1`,
+        range: `A1:J1`,
         valueInputOption: 'USER_ENTERED',
         requestBody: {
-          values: [['發生日期', '回報人員', '品號', '數量', '原因說明', '狀態', '更新人員', '更新日期', '廠商', '完成日期', '照片']],
+          values: [['發生日期', '回報人員', '品號', '數量', '原因說明', '狀態', '更新人員', '更新日期', '廠商', '完成日期']],
         },
       });
     }
