@@ -563,15 +563,14 @@ export default function App() {
                         
                         {/* 操作按鈕 */}
                         <div className="flex flex-row md:flex-col gap-2 shrink-0 pt-4 md:pt-0 border-t md:border-t-0 border-gray-100">
-                          {report.status === '待處理' && (
+                          {(!report.vendor?.trim() && report.status !== '已通知廠商') ? (
                             <button
                               onClick={() => handleUpdateStatus(report.rowIndex, '已通知廠商')}
                               className="flex-1 md:flex-none inline-flex items-center justify-center px-3 py-2 border border-amber-200 text-xs font-bold rounded shadow-sm text-amber-700 bg-amber-50 hover:bg-amber-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-amber-500 transition-all"
                             >
                               通知廠商
                             </button>
-                          )}
-                          {report.status === '已通知廠商' && (
+                          ) : (
                             <button
                               onClick={() => handleUpdateStatus(report.rowIndex, '完成')}
                               className="flex-1 md:flex-none inline-flex items-center justify-center px-3 py-2 border border-emerald-200 text-xs font-bold rounded shadow-sm text-white bg-emerald-600 hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500 transition-all"
