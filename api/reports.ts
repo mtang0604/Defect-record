@@ -1,7 +1,7 @@
 import { google } from 'googleapis';
 
 const SHEET_ID = process.env.GOOGLE_SHEET_ID || '1y5w9x7E02xb3Otni11iN9YHmsT_Fk1ynyN52RmmwMOc';
-const RANGE = `A:J`;
+const RANGE = `A:K`;
 
 async function getSheetsClient() {
   const clientEmail = process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL;
@@ -87,6 +87,7 @@ async function getReports() {
         updateDate: row[7] || '',
         vendor: row[8] || '',
         completionDate: row[9] || '',
+        completionPersonnel: row[10] || '',
         _isEmpty: row.length === 0 || !row.some(cell => cell && cell.trim() !== '')
       };
     })
@@ -105,7 +106,7 @@ async function addReport(reportData: any) {
     valueInputOption: 'USER_ENTERED',
     insertDataOption: 'INSERT_ROWS', // Force inserting a new row
     requestBody: {
-      values: [[date, reporter, itemNumber, quantity, reason, '待處理', '', '', '', '']],
+      values: [[date, reporter, itemNumber, quantity, reason, '待處理', '', '', '', '', '']],
     },
   });
 }
@@ -120,13 +121,13 @@ export async function deleteReport(rowIndex: string) {
 }
 
 async function updateReportStatus(rowIndex: string, updateData: any) {
-  const { status, updater, updateDate, vendor, completionDate } = updateData;
+  const { status, updater, updateDate, vendor, completionDate, completionPersonnel } = updateData;
   const sheets = await getSheetsClient();
 
   // Fetch current row data to preserve fields that aren't being updated
   const currentData = await sheets.spreadsheets.values.get({
     spreadsheetId: SHEET_ID,
-    range: `F${rowIndex}:J${rowIndex}`,
+    range: `F${rowIndex}:K${rowIndex}`,
   });
   
   const row = currentData.data.values?.[0] || [];
@@ -135,10 +136,11 @@ async function updateReportStatus(rowIndex: string, updateData: any) {
   const currentUpdateDate = row[2] || '';
   const currentVendor = row[3] || '';
   const currentCompletionDate = row[4] || '';
+  const currentCompletionPersonnel = row[5] || '';
 
   await sheets.spreadsheets.values.update({
     spreadsheetId: SHEET_ID,
-    range: `F${rowIndex}:J${rowIndex}`,
+    range: `F${rowIndex}:K${rowIndex}`,
     valueInputOption: 'USER_ENTERED',
     requestBody: {
       values: [[
@@ -146,7 +148,8 @@ async function updateReportStatus(rowIndex: string, updateData: any) {
         updater !== undefined ? updater : currentUpdater,
         updateDate !== undefined ? updateDate : currentUpdateDate,
         vendor !== undefined ? vendor : currentVendor,
-        completionDate !== undefined ? completionDate : currentCompletionDate
+        completionDate !== undefined ? completionDate : currentCompletionDate,
+        completionPersonnel !== undefined ? completionPersonnel : currentCompletionPersonnel
       ]],
     },
   });
@@ -157,17 +160,17 @@ async function ensureHeaders() {
     const sheets = await getSheetsClient();
     const response = await sheets.spreadsheets.values.get({
       spreadsheetId: SHEET_ID,
-      range: `A1:J1`,
+      range: `A1:K1`,
     });
 
     const rows = response.data.values;
     if (!rows || rows.length === 0) {
       await sheets.spreadsheets.values.update({
         spreadsheetId: SHEET_ID,
-        range: `A1:J1`,
+        range: `A1:K1`,
         valueInputOption: 'USER_ENTERED',
         requestBody: {
-          values: [['發生日期', '回報人員', '品號', '數量', '原因說明', '狀態', '更新人員', '更新日期', '廠商', '完成日期']],
+          values: [['發生日期', '回報人員', '品號', '數量', '原因說明', '狀態', '更新人員', '更新日期', '廠商', '完成日期', '完成人員']],
         },
       });
     }

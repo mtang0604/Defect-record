@@ -14,6 +14,7 @@ interface Report {
   updateDate: string;
   vendor?: string;
   completionDate?: string;
+  completionPersonnel?: string;
 }
 
 interface ModalState {
@@ -171,6 +172,7 @@ export default function App() {
       payload.vendor = vendor;  // I column (廠商)
     } else if (newStatus === '完成') {
       payload.completionDate = now; // J column (完成日期)
+      payload.completionPersonnel = updaterName; // K column (完成人員)
       // We explicitly do NOT set payload.updateDate here so it preserves the original "通知廠商" date in H column
     }
 
@@ -548,7 +550,7 @@ export default function App() {
                             )}
                             {report.completionDate && (
                               <div className="text-xs font-bold text-emerald-600 mt-1">
-                                完成日期: {report.completionDate}
+                                完成日期: {report.completionDate} {report.completionPersonnel ? `(完成人員: ${report.completionPersonnel})` : ''}
                               </div>
                             )}
                             {report.updater && (
@@ -564,19 +566,19 @@ export default function App() {
                           {report.status === '待處理' && (
                             <button
                               onClick={() => handleUpdateStatus(report.rowIndex, '已通知廠商')}
-                              disabled={!updaterName}
-                              className="flex-1 md:flex-none inline-flex items-center justify-center px-3 py-2 border border-amber-200 text-xs font-bold rounded shadow-sm text-amber-700 bg-amber-50 hover:bg-amber-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-amber-500 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+                              className="flex-1 md:flex-none inline-flex items-center justify-center px-3 py-2 border border-amber-200 text-xs font-bold rounded shadow-sm text-amber-700 bg-amber-50 hover:bg-amber-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-amber-500 transition-all"
                             >
-                              已通知廠商
+                              通知廠商
                             </button>
                           )}
-                          <button
-                            onClick={() => handleUpdateStatus(report.rowIndex, '完成')}
-                            disabled={!updaterName}
-                            className="flex-1 md:flex-none inline-flex items-center justify-center px-3 py-2 border border-emerald-200 text-xs font-bold rounded shadow-sm text-white bg-emerald-600 hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
-                          >
-                            標記完成
-                          </button>
+                          {report.status === '已通知廠商' && (
+                            <button
+                              onClick={() => handleUpdateStatus(report.rowIndex, '完成')}
+                              className="flex-1 md:flex-none inline-flex items-center justify-center px-3 py-2 border border-emerald-200 text-xs font-bold rounded shadow-sm text-white bg-emerald-600 hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500 transition-all"
+                            >
+                              標記完成
+                            </button>
+                          )}
                         </div>
                       </div>
                     </li>
